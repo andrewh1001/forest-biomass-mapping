@@ -4,7 +4,7 @@ Mapping above-ground forest biomass density (AGBD) across Michigan at 10 m resol
 GEDI spaceborne lidar with Sentinel-2 imagery and Google AlphaEarth embeddings, then splitting biomass into
 leaf and wood with species-level allometry and phenology.
 
-**Project page:** https://andrewh1001.github.io/forest-biomass-mapping/
+**Project page:** https://huang-ch.com/portfolio/agbd/
 
 ![Predicted AGBD over 50 × 50 km of central Michigan](docs/images/agbd_map_regional.png)
 
@@ -20,12 +20,12 @@ leaf and wood with species-level allometry and phenology.
 - **Phenology analysis:** a harmonic decomposition of a 6-year predicted time series, validated against MODIS LAI
   (r = 0.87).
 
-| Model | RMSE (Mg/ha) | RMSE ÷ target std | R² |
-|---|---|---|---|
-| Predict the mean | 78.7 | 1.00 | 0.00 |
-| Random forest (canopy height, SRTM, Daymet, NLCD)* | 23.6 | 0.58 | 0.67 |
-| CNN, S2 + AlphaEarth, single head | 37.6–39.7 | 0.48–0.50 | 0.75–0.77 |
-| **CNN, S2 + AlphaEarth, dual head** | **37.1** | **0.47** | **0.78** |
+| Model                                              | RMSE (Mg/ha)   | RMSE ÷ target std | R²            |
+| -------------------------------------------------- | -------------- | ------------------ | -------------- |
+| Predict the mean                                   | 78.7           | 1.00               | 0.00           |
+| Random forest (canopy height, SRTM, Daymet, NLCD)* | 23.6           | 0.58               | 0.67           |
+| CNN, S2 + AlphaEarth, single head                  | 37.6–39.7     | 0.48–0.50         | 0.75–0.77     |
+| **CNN, S2 + AlphaEarth, dual head**          | **37.1** | **0.47**     | **0.78** |
 
 \*Scored on an earlier, smaller subset with a narrower biomass range (target std ≈ 41 vs. ≈ 79 Mg/ha), so compare
 R² or RMSE ÷ std, not raw RMSE. All CNN numbers come from a random 70/15/15 split of footprints. Nearby GEDI shots have
@@ -45,23 +45,23 @@ baselines/     Random-forest baseline
 weights/       Trained checkpoints and their AlphaEarth normalization stats
 ```
 
-| File | Purpose |
-|---|---|
-| `model/network.py` | `S2EncoderFCN_ResFiLM` encoder, single-head `AGBDNet` and `AGBDNet_DualHead` |
-| `model/dataset.py` | Loads S2/SCL patches, AlphaEarth vectors, cloud/snow fractions, NLCD forest type, GEDI date |
-| `model/train.py` | Training loop; dual-head loss (weighted log-MSE + leaf/wood Huber + leaf-fraction prior) |
-| `model/main.py` | Builds the split, trains or evaluates, writes metrics and plots |
-| `model/inference_map.py` | Tiled sliding-window prediction over full scenes, leaf/wood maps from the prior |
-| `leaf_prior/prepare_leaf_prior.py` | Per-pixel leaf-fraction GeoTIFF for Michigan |
-| `leaf_prior/harmonic_decomposition.py` | Two-term harmonic fit of the AGBD time series |
-| `leaf_prior/validate_lai.py` | Comparison with MODIS MCD15A2H LAI |
+| File                                     | Purpose                                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `model/network.py`                     | `S2EncoderFCN_ResFiLM` encoder, single-head `AGBDNet` and `AGBDNet_DualHead`          |
+| `model/dataset.py`                     | Loads S2/SCL patches, AlphaEarth vectors, cloud/snow fractions, NLCD forest type, GEDI date |
+| `model/train.py`                       | Training loop; dual-head loss (weighted log-MSE + leaf/wood Huber + leaf-fraction prior)    |
+| `model/main.py`                        | Builds the split, trains or evaluates, writes metrics and plots                             |
+| `model/inference_map.py`               | Tiled sliding-window prediction over full scenes, leaf/wood maps from the prior             |
+| `leaf_prior/prepare_leaf_prior.py`     | Per-pixel leaf-fraction GeoTIFF for Michigan                                                |
+| `leaf_prior/harmonic_decomposition.py` | Two-term harmonic fit of the AGBD time series                                               |
+| `leaf_prior/validate_lai.py`           | Comparison with MODIS MCD15A2H LAI                                                          |
 
 ## Weights
 
-| File | Network | Notes |
-|---|---|---|
-| `weights/dualhead.pt` | `network.AGBDNet_DualHead` | Used for the reported test metrics |
-| `weights/singlehead.pt` | `network.AGBDNet` | Outputs log-AGBD (apply `exp`). Used by `inference_map.py` for wall-to-wall maps |
+| File                      | Network                      | Notes                                                                                |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------------------------ |
+| `weights/dualhead.pt`   | `network.AGBDNet_DualHead` | Used for the reported test metrics                                                   |
+| `weights/singlehead.pt` | `network.AGBDNet`          | Outputs log-AGBD (apply `exp`). Used by `inference_map.py` for wall-to-wall maps |
 
 Each `.pt` has a matching `.npz` with the AlphaEarth mean and std computed on the training split. Inference
 must use the same `.npz` as its checkpoint.

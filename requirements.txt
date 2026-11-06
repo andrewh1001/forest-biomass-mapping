@@ -20,11 +20,9 @@ rioxarray==0.20.0
 h5py==3.15.1
 tifffile
 
-# Deep learning (CUDA 12.8 build; see https://pytorch.org/get-started/locally/ for other platforms)
 --extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.9.1+cu128
 torchvision==0.24.1+cu128
 
-# Data download (optional)
 earthengine-api
 requests
