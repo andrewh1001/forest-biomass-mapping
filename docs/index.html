@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forest Biomass Mapping</title>
+<meta name="description" content="A multimodal deep-learning pipeline that maps above-ground forest biomass at 10 m resolution across Michigan using GEDI lidar, Sentinel-2 and AlphaEarth embeddings.">
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --text: #1d2420; --muted: #5d6762; --line: #e3e1da;
+    --accent: #2f6b45; --accent-soft: #e6f0e8; --warn-soft: #fbf2e1; --warn: #8a5a12; --code: #f2f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141816; --surface: #1b201d; --text: #e6ebe7; --muted: #9aa59f; --line: #2c332f;
+      --accent: #7cc494; --accent-soft: #1f2e24; --warn-soft: #2e2617; --warn: #e2b766; --code: #232925;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141816; --surface: #1b201d; --text: #e6ebe7; --muted: #9aa59f; --line: #2c332f;
+    --accent: #7cc494; --accent-soft: #1f2e24; --warn-soft: #2e2617; --warn: #e2b766; --code: #232925;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 56px 16px 80px; }
+  header .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; }
+  h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.15; margin: 8px 0 14px; letter-spacing: -.01em; }
+  h2 { font-size: 24px; margin: 64px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 18px; margin: 32px 0 8px; }
+  p { margin: 0 0 14px; }
+  .lede { font-size: 19px; color: var(--muted); max-width: 720px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+  .tags li { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 3px 12px; font-size: 13px; font-weight: 500; }
+  .links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin: 22px 0 0; font-size: 15px; }
+  .links a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .links a:hover { text-decoration: underline; }
+  .links a.btn { background: var(--accent); color: var(--bg); padding: 8px 16px; border-radius: 8px; }
+  .links a.btn:hover { text-decoration: none; opacity: .9; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 32px 0 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 26px; line-height: 1.2; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 13px; color: var(--muted); }
+  figure { margin: 24px 0; }
+  figure a { display: block; }
+  figure img { width: 100%; height: auto; display: block; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+  figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .hero-fig img { border: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 12px 0 20px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; }
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+  .flow .step { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .flow .step .n { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .05em; }
+  .flow .step h4 { margin: 2px 0 6px; font-size: 15px; }
+  .flow .step p { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+  .arch { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; overflow-x: auto; }
+  .arch pre { margin: 0; font: 13px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--text); }
+  .callout { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 14px 16px; border-radius: 6px; margin: 20px 0; }
+  .callout strong { color: var(--warn); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  ul.clean { padding-left: 20px; margin: 0 0 14px; }
+  ul.clean li { margin-bottom: 6px; }
+  footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  @media (max-width: 720px) { .flow { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
+  @media (max-width: 420px) { .flow { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <div class="eyebrow">Research project · Remote sensing × deep learning</div>
+  <h1>Mapping forest biomass from space at 10&nbsp;m resolution</h1>
+  <p class="lede">
+    An end-to-end, multimodal pipeline that learns above-ground biomass density (AGBD) from sparse
+    spaceborne lidar and turns it into wall-to-wall maps of Michigan. It fuses Sentinel-2 imagery and
+    Google AlphaEarth embeddings, then splits biomass into leaf and wood using species-level allometry and phenology.
+  </p>
+  <ul class="tags">
+    <li>PyTorch</li><li>CNN + FiLM conditioning</li><li>GEDI L4A lidar</li><li>Sentinel-2</li>
+    <li>AlphaEarth embeddings</li><li>rasterio / GDAL</li><li>Google Earth Engine</li><li>MODIS LAI</li>
+  </ul>
+  <p class="links">
+    <a class="btn" href="https://github.com/andrewh1001/forest-biomass-mapping">Code &amp; trained weights on GitHub</a>
+    <a href="https://github.com/andrewh1001/forest-biomass-mapping/blob/main/DATA.md">How to get the data</a>
+    <a href="architecture.drawio">Architecture diagram (draw.io)</a>
+  </p>
+  <div class="stats">
+    <div class="stat"><b>61,246</b><span>GEDI lidar footprints used as labels</span></div>
+    <div class="stat"><b>10 m</b><span>output map resolution (GEDI footprint ≈ 25 m)</span></div>
+    <div class="stat"><b>R² 0.78</b><span>held-out test set, total AGBD</span></div>
+    <div class="stat"><b>−53%</b><span>RMSE vs. mean predictor (78.7 → 37.1 Mg/ha)</span></div>
+  </div>
+</header>
+
+<figure class="hero-fig">
+  <a href="images/agbd_map_regional.png"><img src="images/agbd_map_regional.png" alt="Map of predicted biomass over a 50 by 50 km area of central Michigan; forest patches and river corridors appear dark green, farmland and urban areas pale."></a>
+  <figcaption>Predicted AGBD over a 50 × 50 km area of central Michigan. Woodlots, riparian corridors and
+  larger forest blocks stand out against agricultural land and the urban core.</figcaption>
+</figure>
+
+<h2>The problem</h2>
+<p>
+  Forest biomass is central to carbon accounting, but measuring it directly is expensive. NASA's
+  <strong>GEDI</strong> lidar on the International Space Station measures canopy structure and estimates
+  biomass very well, but only in scattered 25 m footprints along orbit tracks, and most of the land is never sampled.
+  Optical satellites like <strong>Sentinel-2</strong> see everything every few days, but can't directly
+  measure vertical structure.
+</p>
+<p>
+  This project trains a model to predict GEDI's biomass from what Sentinel-2 and a learned Earth-observation
+  embedding see around each footprint. The model is then applied to every 10 m pixel to produce continuous maps.
+  A second stage asks a harder ecological question: <em>how much of that biomass is leaves, and how much is wood?</em>
+</p>
+
+<h2>Data</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Source</th><th>Role</th><th>Details</th></tr></thead>
+  <tbody>
+    <tr><td>GEDI L4A (v2.1)</td><td>Labels</td><td>Footprint AGBD for 2024–2025, quality-filtered (L4 / L2 quality flags, degrade flag), within a 350 km radius of central Michigan</td></tr>
+    <tr><td>Sentinel-2 L2A</td><td>Primary input</td><td>10 bands (B02–B12) as 21 × 21 px patches (210 m) per footprint; scene classification (SCL) layer for cloud and snow masks; spring, summer and fall composites</td></tr>
+    <tr><td>AlphaEarth Foundations</td><td>Context input</td><td>64-dimensional annual (2024) embedding per location, exported from Google Earth Engine</td></tr>
+    <tr><td>NLCD 2024</td><td>Land cover</td><td>Forest type (deciduous, evergreen, mixed) and water masking</td></tr>
+    <tr><td>USFS TreeMap 2022</td><td>Leaf prior</td><td>Per-pixel FIA plot imputation of tree species and stem density</td></tr>
+    <tr><td>BAAD + Jenkins et al.</td><td>Leaf prior</td><td>Measured and allometric leaf-to-total mass ratios per species</td></tr>
+    <tr><td>MODIS MCD15A2H</td><td>Validation</td><td>8-day leaf area index, 2020–2026</td></tr>
+    <tr><td>ETH canopy height, SRTM, Daymet</td><td>Explored</td><td>Used in the random-forest baseline and early CNN versions</td></tr>
+  </tbody>
+</table>
+</div>
+
+<figure>
+  <a href="images/s2_patches.png"><img src="images/s2_patches.png" alt="Eight small Sentinel-2 image patches, labeled from 3 to 280 Mg/ha; apart from the lowest, they look similar dark green."></a>
+  <figcaption>Model inputs: Sentinel-2 patches centered on GEDI footprints. Above roughly 50 Mg/ha, summer
+  canopies look nearly identical in optical imagery. This saturation is why the model needs spatial context and
+  the AlphaEarth embedding, not just pixel spectra.</figcaption>
+</figure>
+
+<h2>Pipeline</h2>
+<div class="flow">
+  <div class="step"><div class="n">01 · INGEST</div><h4>Collect &amp; filter</h4><p>Parse GEDI HDF5 beams, apply quality flags, and download Sentinel-2 tiles and auxiliary rasters.</p></div>
+  <div class="step"><div class="n">02 · ALIGN</div><h4>Common grid</h4><p>Reproject everything to equal-area EPSG:6933, mosaic tiles, and snap AlphaEarth onto the S2 grid.</p></div>
+  <div class="step"><div class="n">03 · SAMPLE</div><h4>Patch extraction</h4><p>Cut a 21 × 21 patch per footprint, check validity on every layer, and drop no-data or cloudy patches.</p></div>
+  <div class="step"><div class="n">04 · TRAIN</div><h4>CNN regression</h4><p>Train a ResNet-style fully convolutional network with AlphaEarth FiLM conditioning and a weighted log-space loss.</p></div>
+  <div class="step"><div class="n">05 · MAP</div><h4>Tiled inference</h4><p>Run overlapping sliding-window inference over full scenes and write cloud-masked 10 m GeoTIFFs.</p></div>
+  <div class="step"><div class="n">06 · PRIOR</div><h4>Leaf-fraction map</h4><p>Combine TreeMap species, BAAD and Jenkins ratios on the NLCD forest mask to get per-pixel leaf fraction.</p></div>
+  <div class="step"><div class="n">07 · TIME</div><h4>Seasonal series</h4><p>Predict 45 cloud-free dates from 2020–2026 and fit a two-term harmonic model.</p></div>
+  <div class="step"><div class="n">08 · VALIDATE</div><h4>Independent check</h4><p>Compare the seasonal leaf signal against MODIS LAI.</p></div>
+</div>
+
+<h2>Model</h2>
+<p>
+  The core network is a compact fully convolutional encoder over the Sentinel-2 patch. The AlphaEarth vector,
+  plus per-patch snow and cloud fractions, conditions every stage through
+  <strong>FiLM</strong> (feature-wise linear modulation), so the embedding shifts and scales the image features
+  rather than simply being concatenated at the end. The FiLM layers are zero-initialized, so the network starts as a
+  plain image model and learns how much to rely on the embedding. Biomass is predicted from the feature vector at the
+  center pixel, which lets the same network run as a dense sliding-window map at inference time.
+</p>
+<figure>
+  <a href="images/architecture.svg"><img src="images/architecture.png" alt="Architecture diagram: a Sentinel-2 patch passes through three residual blocks and a 1x1 convolution, with FiLM layers driven by the AlphaEarth conditioning vector; the center-pixel feature feeds a shared trunk that splits into leaf and wood heads, summed to total AGBD."></a>
+  <figcaption>Model architecture. AlphaEarth conditions the image encoder through FiLM. The center-pixel feature feeds
+  separate leaf and wood heads, whose sum is total AGBD. The single-head variant replaces both heads with one MLP.</figcaption>
+</figure>
+<p>
+  <strong>Training details:</strong> AdamW (lr 1e-3, weight decay 3e-4) with a reduce-on-plateau schedule and
+  gradient clipping. Patches whose center pixel is cloudy, or that are more than 20% cloud, are dropped. AlphaEarth
+  is normalized using training-split statistics only. Because AGBD is heavily right-skewed (median 16, mean 63,
+  max 575 Mg/ha), the total-biomass loss is MSE in log space with extra weight on high-biomass samples, so the
+  model doesn't collapse toward the many low-biomass shots. I also ran grid and Optuna hyperparameter searches.
+</p>
+
+<h2>Results</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th>Test data</th><th class="num">RMSE (Mg/ha)</th><th class="num">RMSE ÷ target std</th><th class="num">R²</th></tr></thead>
+  <tbody>
+    <tr><td>Predict the mean</td><td>Current (std ≈ 79)</td><td class="num">78.7</td><td class="num">1.00</td><td class="num">0.00</td></tr>
+    <tr><td>Random forest: canopy height, SRTM, Daymet, NLCD at the footprint pixel</td><td>Earlier subset (std ≈ 41)</td><td class="num">23.6</td><td class="num">0.58</td><td class="num">0.67</td></tr>
+    <tr><td>CNN, S2 + AlphaEarth (single head)</td><td>Current (std ≈ 79)</td><td class="num">37.6–39.7</td><td class="num">0.48–0.50</td><td class="num">0.75–0.77</td></tr>
+    <tr><td><strong>CNN, S2 + AlphaEarth (dual head)</strong></td><td>Current (std ≈ 79)</td><td class="num"><strong>37.1</strong></td><td class="num"><strong>0.47</strong></td><td class="num"><strong>0.78</strong></td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  <strong>Why the random forest has a lower RMSE but a lower R².</strong> RMSE is in Mg/ha, so it scales with how
+  spread out the test targets are. The random forest was scored on an earlier, smaller subset with few high-biomass
+  shots (target std ≈ 41 Mg/ha), while the CNN's test set spans the full range (std ≈ 79 Mg/ha). R², or equivalently
+  RMSE divided by the target standard deviation, corrects for that. On that scale the CNN's error is about 20% lower
+  relative to the spread of the data (0.47 vs. 0.58). The dual-head CNN's MAE is 18.7 Mg/ha. A random forest re-run on
+  the CNN's exact test split would make the comparison direct.
+</p>
+
+<div class="two">
+  <figure>
+    <a href="images/rf_baseline.png"><img src="images/rf_baseline.png" alt="Scatter plot of random forest predicted versus actual AGBD."></a>
+    <figcaption>Random-forest baseline: underestimates strongly above about 100 Mg/ha.</figcaption>
+  </figure>
+  <figure>
+    <a href="images/agbd_map_seasons.png"><img src="images/agbd_map_seasons.png" alt="Two side-by-side biomass maps of the same 10 km area from spring and fall imagery, with lakes masked."></a>
+    <figcaption>The same 10 km area mapped from spring and fall imagery: forest structure stays consistent across seasons.</figcaption>
+  </figure>
+</div>
+
+<figure>
+  <a href="images/cnn_results.png"><img src="images/cnn_results.png" alt="Three panels: predicted versus true scatter, residuals versus true AGBD, and a histogram of errors centered on zero."></a>
+  <figcaption>CNN on the held-out test set. Predictions follow the 1:1 line up to about 300 Mg/ha. The residual plot shows
+  the classic saturation pattern: very high-biomass stands are underestimated because optical signals flatten out once
+  the canopy closes.</figcaption>
+</figure>
+
+<h2>Separating leaves from wood</h2>
+<p>
+  Total biomass hides an important split: leaves cycle carbon every year, while wood stores it for decades.
+  I explored two complementary ways to separate them.
+</p>
+
+<h3>1 · Species-based leaf-fraction prior</h3>
+<p>
+  For every forest pixel in Michigan (about 40 million NLCD pixels), I looked up the TreeMap 2022 plot's species list,
+  weighted each species by stem density, and assigned a leaf-to-total mass ratio. The ratio comes from measured
+  BAAD data where available and from Jenkins et al. allometric component ratios otherwise. Species names were
+  reconciled across the two databases, and unmatched pixels fall back to their NLCD-class mean.
+</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Forest type</th><th class="num">Pixels</th><th class="num">BAAD only</th><th class="num">BAAD + Jenkins</th></tr></thead>
+  <tbody>
+    <tr><td>Deciduous (NLCD 41)</td><td class="num">29.6 M</td><td class="num">0.150</td><td class="num">0.084 ± 0.048</td></tr>
+    <tr><td>Evergreen (NLCD 42)</td><td class="num">6.6 M</td><td class="num">0.230</td><td class="num">0.124 ± 0.072</td></tr>
+    <tr><td>Mixed (NLCD 43)</td><td class="num">4.3 M</td><td class="num">0.180</td><td class="num">0.102 ± 0.060</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  Adding Jenkins allometry roughly halved the leaf fractions. BAAD over-represents small and young trees, which carry
+  proportionally more foliage, so the combined estimate is more representative of mature Michigan stands.
+</p>
+
+<h3>2 · Phenology from a 6-year time series</h3>
+<p>
+  I ran the trained model on 45 cloud-free Sentinel-2 dates (2020–2026) over a deciduous study area and fit a
+  two-term harmonic regression (R² = 0.77). The constant term is read as the season-invariant wood component
+  (≈145 Mg/ha), and the non-negative seasonal oscillation as leaf phenology, peaking around day 209 (late July).
+</p>
+<figure>
+  <a href="images/harmonic_decomposition.png"><img src="images/harmonic_decomposition.png" alt="Three stacked time-series panels: observed AGBD with harmonic fit, constrained wood component, and seasonal leaf component peaking each summer."></a>
+  <figcaption>Harmonic decomposition of predicted AGBD into a constant wood component and a seasonal leaf component.</figcaption>
+</figure>
+<p>
+  To check this against an independent source, I compared the seasonal leaf signal with
+  <strong>MODIS leaf area index</strong> over the same area. The two track closely: Pearson r = 0.87, Spearman ρ = 0.82.
+  Green-up, peak and senescence timing all line up.
+</p>
+<figure>
+  <a href="images/lai_validation_comparison.png"><img src="images/lai_validation_comparison.png" alt="Normalized MODIS LAI and harmonic leaf component over 2021 to 2026, a scatter of LAI against leaf biomass, and a day-of-year climatology."></a>
+  <figcaption>Validation against MODIS LAI: time series, scatter and seasonal climatology.</figcaption>
+</figure>
+<figure>
+  <a href="images/wood_comparison.png"><img src="images/wood_comparison.png" alt="Wood biomass over time for three methods, and a bar chart of their coefficient of variation."></a>
+  <figcaption>Ideally, wood biomass shouldn't change with the seasons. The harmonic decomposition is the most stable
+  (coefficient of variation 0.084). The fixed-ratio and dual-head approaches inherit the full seasonal swing of the total (CV ≈ 0.19).</figcaption>
+</figure>
+
+<div class="callout">
+  <strong>What I learned.</strong> The seasonal swing in predicted total AGBD (about ±40 Mg/ha) is much larger than the
+  foliage mass of a temperate forest. The model is partly responding to leaf-on/leaf-off changes in reflectance, not just
+  structure. The strong LAI correlation confirms the signal <em>is</em> phenological, but it also means the swing
+  is better treated as a canopy-greenness effect than as literal leaf biomass. That insight shaped the project's
+  direction: total biomass from the CNN, allocated to leaf and wood with the species prior, with seasonality
+  as a diagnostic.
+</div>
+
+<h2>Next steps</h2>
+<ul class="clean">
+  <li><strong>Spatial cross-validation.</strong> GEDI shots are about 60 m apart along a track, so a random split puts
+    overlapping patches in both train and test. Evaluating by held-out orbit tracks or spatial blocks gives a more
+    honest estimate of how well the maps work in new areas.</li>
+  <li><strong>Stratified metrics</strong> for forest pixels and by biomass bin, since half of the samples are under 20 Mg/ha.</li>
+  <li><strong>Ablations:</strong> S2-only vs. S2 + AlphaEarth, and single-season vs. multi-season stacks as model inputs.</li>
+  <li><strong>Per-pixel leaf prior in training:</strong> sample the TreeMap/BAAD/Jenkins map at each GEDI footprint
+    instead of class-level averages.</li>
+  <li><strong>Uncertainty:</strong> propagate GEDI L4A standard errors and ensemble variance into the output maps.</li>
+</ul>
+
+<h2>Tech stack</h2>
+<p>
+  Python · PyTorch (CUDA) · rasterio · GDAL · geopandas · pyproj · h5py · xarray / rioxarray ·
+  scikit-learn · Optuna · NumPy / pandas · SciPy · Matplotlib · Google Earth Engine · NASA Earthdata / AppEEARS
+</p>
+
+<footer>
+  Andrew Huang · 2025–2026
+</footer>
+
+</main>
+</body>
+</html>

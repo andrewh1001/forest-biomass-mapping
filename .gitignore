@@ -1,0 +1,28 @@
+# Data and outputs (see DATA.md)
+*.h5
+*.tif
+*.tiff
+*.npy
+*.SAFE/
+*.zip
+*.gpkg
+*.aux.xml
+model/data/
+model/outputs/
+leaf_prior/data/
+leaf_prior/outputs/
+
+# Bundled weights are tracked explicitly; ignore any new checkpoints
+*.pt
+*.npz
+!weights/*.pt
+!weights/*.npz
+
+# Python / editors
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.vscode/
+.idea/

@@ -1,0 +1,2 @@
+model,r2,r2_single,r2_double,r2_improvement,wood_biomass_mgha,leaf_amplitude_mgha,phi,c,psi,peak_doy,trough_doy,summer_leaf_frac,winter_leaf_frac,annual_leaf_frac
+double,0.7655,0.7613,0.7655,0.0041,145.54,39.53,-2.0322,2.572,-0.3016,209,26,0.1945,0.0,0.0901
